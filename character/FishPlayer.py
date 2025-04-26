@@ -19,6 +19,7 @@ class FishPlayer(Fish):
         self.invincible_duration = specie['invincible_duration']  # 无敌持续时间（毫秒）
         self.invincible_start_time = 0
         self.score = 0
+        self.win_score=specie['win_score']
         self.original_image=pygame.image.load(f'drawable/png/{self.name}.png').convert_alpha()
 
 
@@ -90,6 +91,9 @@ class FishPlayer(Fish):
     '''
 
     def update(self, keys):
+        if self.score>=self.win_score:
+            self.win=True
+            return
         # 运动控制
         move_vector = pygame.math.Vector2(0, 0)
         if keys[pygame.K_LEFT]: move_vector.x -= 1

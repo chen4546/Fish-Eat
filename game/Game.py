@@ -4,15 +4,21 @@ from config.Pixel import pixel_x, pixel_y
 
 from character.FishPlayer import FishPlayer as fp
 from character.FishComputer import FishComputer as fc
-from config.sound import EAT,HURT
+from config.sound import EAT,HURT,WY
 
 
 class Game:
     def __init__(self, species, rect_player, computer_fish_types, stage_weights, rect_computer=None, ):
+
         pygame.init()
         # 初始化时加载音效
         self.eat_sound = pygame.mixer.Sound(random.choice(EAT))
         self.hurt_sound = pygame.mixer.Sound(random.choice(HURT))
+        self.wy=[pygame.mixer.Sound(random.choice(WY['hurt'])),
+                 pygame.mixer.Sound(random.choice(WY['eat'])),
+                 pygame.mixer.Sound(random.choice(WY['fail'])),
+                 pygame.mixer.Sound(random.choice(WY['win'])),
+                 pygame.mixer.Sound(random.choice(WY['win_half'])),]
         self.screen = pygame.display.set_mode((pixel_x, pixel_y))
         self.clock = pygame.time.Clock()
         self.running = True
@@ -24,6 +30,8 @@ class Game:
         self.victory = False
         self.all_fish.add(self.player_fish)
         self.min_computer_fish = 5  # 电脑鱼最小数量阈值
+        self.win_play=False
+        self.half_win_play = False
 
     def run(self):
         while self.running:
@@ -61,14 +69,16 @@ class Game:
                 if fish.size > self.player_fish.size:
                     # 玩家受到伤害（逻辑封装在FishPlayer中）
                     if self.player_fish.take_damage():
-                        self.hurt_sound.play()
+                        #self.hurt_sound.play()
+                        self.wy[0].play()
                     '''
                     if self.player_fish.lives <= 0:
                         self.game_over = True
                     '''
                 elif self.player_fish.size > fish.size:
                     self.player_fish.eat(fish)
-                    self.eat_sound.play()
+                    #self.eat_sound.play()
+                    self.wy[1].play()
                 if fish.weight <= 0:
                     fishes_to_kill.append(fish)
             # 移除被吃掉的鱼
@@ -170,10 +180,22 @@ class Game:
 
         # 显示Game Over
         if self.game_over:
+            self.wy[2].play()
             game_over_font = pygame.font.Font(None, 72)
             game_over_text = game_over_font.render('GAME OVER', True, 'red')
             text_rect = game_over_text.get_rect(center=(pixel_x / 2, pixel_y / 2))
             self.screen.blit(game_over_text, text_rect)
+        # 显示Game Over
+        if self.player_fish.win and not self.win_play:
+            self.wy[3].play()
+            win_font = pygame.font.Font(None, 72)
+            win_text = win_font.render('WIN', True, 'green')
+            text_rect = win_text.get_rect(center=(pixel_x / 2, pixel_y / 2))
+            self.screen.blit(win_text, text_rect)
+            self.win_play=True
+        if self.player_fish.score>10 and not self.half_win_play:
+            self.wy[4].play()
+            self.half_win_play=True
 
         pygame.display.flip()
 
