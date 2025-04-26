@@ -4,34 +4,26 @@ from config.Pixel import pixel_x, pixel_y
 
 from character.FishPlayer import FishPlayer as fp
 from character.FishComputer import FishComputer as fc
+from config.sound import EAT,HURT
 
 
 class Game:
-    def __init__(self, species, rect_player, rect_computer, ):
+    def __init__(self, species, rect_player, computer_fish_types, stage_weights, rect_computer=None, ):
         pygame.init()
+        # 初始化时加载音效
+        self.eat_sound = pygame.mixer.Sound(random.choice(EAT))
+        self.hurt_sound = pygame.mixer.Sound(random.choice(HURT))
         self.screen = pygame.display.set_mode((pixel_x, pixel_y))
         self.clock = pygame.time.Clock()
         self.running = True
         self.all_fish = pygame.sprite.Group()
         self.player_fish = fp(specie=species['1'], rect=rect_player)
+        self.fish_types = computer_fish_types
+        self.stage_weights = stage_weights
         self.game_over = False
         self.victory = False
         self.all_fish.add(self.player_fish)
         self.min_computer_fish = 5  # 电脑鱼最小数量阈值
-        '''
-        for r in rect_computer:
-            # 根据模板生成随机属性
-            size = random.randint(species['2']['size_range'][0], species['2']['size_range'][1])
-            speed = random.randint(species['2']['speed_range'][0], species['2']['speed_range'][1])
-            specie_com = {
-                'name': species['2']['name'],
-                'size': size,
-                'weight': size * species['2']['weight_factor'],  # 重量与大小成正比
-                'speed': speed
-            }
-            small_fish = fc(specie=specie_com, rect=r)
-            self.all_fish.add(small_fish)
-        '''
 
     def run(self):
         while self.running:
@@ -52,7 +44,7 @@ class Game:
             return
         if self.player_fish.win:
             self.game_over = True
-            return # 同时触发游戏结束
+            return  # 同时触发游戏结束
         # update all fish
         keys = pygame.key.get_pressed()
         self.all_fish.update(keys)
@@ -64,33 +56,77 @@ class Game:
 
         # Detecting collisions
         for fish in self.all_fish:
-            if fish != self.player_fish and pygame.sprite.collide_rect(fish, self.player_fish):
+            # 在Game类的update方法中修改碰撞检测逻辑
+            if fish != self.player_fish and self.player_fish.check_collision(fish):
                 if fish.size > self.player_fish.size:
                     # 玩家受到伤害（逻辑封装在FishPlayer中）
-                    self.player_fish.take_damage()
+                    if self.player_fish.take_damage():
+                        self.hurt_sound.play()
                     '''
                     if self.player_fish.lives <= 0:
                         self.game_over = True
                     '''
                 elif self.player_fish.size > fish.size:
                     self.player_fish.eat(fish)
+                    self.eat_sound.play()
                 if fish.weight <= 0:
                     fishes_to_kill.append(fish)
             # 移除被吃掉的鱼
         for fish in fishes_to_kill:
             fish.kill()
+            # 检查是否有比玩家大或小的鱼
+        has_larger = any(fish.size > self.player_fish.size for fish in self.all_fish if fish != self.player_fish)
+        has_smaller = any(fish.size < self.player_fish.size for fish in self.all_fish if fish != self.player_fish)
         self.spawn_computer_fish_if_needed()
 
     def spawn_computer_fish_if_needed(self):
         # 统计当前电脑鱼数量
         current_computer = len([fish for fish in self.all_fish if isinstance(fish, fc)])
+        # print(current_computer)
         # 如果数量不足，补充到至少5条
         while current_computer < self.min_computer_fish:
             self._create_computer_fish_from_edge()
             current_computer += 1
 
-    def _create_computer_fish_from_edge(self):
-        # 随机选择一个屏幕边缘方向（0:上，1:下，2:左，3:右）
+    # 在Game类的spawn_computer_fish_if_needed方法中修改
+    def _create_computer_fish_from_edge(self, fish_type=None, size=None, speed=None):
+        if fish_type is not None:
+            self._create_specific_fish(fish_type, size, speed)
+        else:
+            pass
+        x, y, dir_x, dir_y = self.random_position()
+        # 选择鱼类类别
+        stage=min(self.player_fish.growth_stage,3)
+        class_names = ['small', 'medium', 'large', 'special']
+        class_weights=self.stage_weights['class_weights'][stage]
+        selected_class = random.choices(class_names, weights=class_weights, k=1)[0]
+
+        # 选择具体鱼类
+        fish_group = self.fish_types[selected_class]
+        inner_weights = self.stage_weights['inner_weights'][selected_class]
+        selected_type = random.choices(fish_group, weights=inner_weights, k=1)[0]
+
+        # 生成属性
+        size = random.randint(*selected_type['size_range'])
+        speed = random.randint(*selected_type['speed_range'])
+        specie_com = {
+            'name': selected_type['name'],
+            'size': size,
+            'weight': size * 1,
+            'speed': speed,
+        }
+
+        # 创建带方向的电脑鱼
+        new_fish = fc(
+            game=self,
+            specie=specie_com,
+            rect=[x, y],
+            direction_x=dir_x,
+            direction_y=dir_y
+        )
+        self.all_fish.add(new_fish)
+
+    def random_position(self):
         edge = random.randint(0, 3)
         if edge == 0:  # 上方进入
             x = random.randint(0, pixel_x)
@@ -108,28 +144,15 @@ class Game:
             x = pixel_x + 20  # 从屏幕外右侧进入
             y = random.randint(0, pixel_y)
             dir_x, dir_y = -1, 0  # 向左移动
-
-        # 生成属性（根据模板随机生成）
-        size = random.randint(20, 40)
-        speed = random.randint(1, 3)
-        specie_com = {
-            'name': 'com',
-            'size': size,
-            'weight': size * 1,
-            'speed': speed
-        }
-        # 创建带方向的电脑鱼
-        new_fish = fc(
-            specie=specie_com,
-            rect=[x, y],
-            direction_x=dir_x,
-            direction_y=dir_y
-        )
-        self.all_fish.add(new_fish)
+        return x, y, dir_x, dir_y
 
     def draw(self):
         # draw background and fish
         self.screen.fill('white')
+        self._draw_status_bar()
+        # 调试信息
+        # if self.DEBUG_MODE:
+        #     self._draw_debug_info()
         # 绘制所有鱼
         for fish in self.all_fish:
             if fish == self.player_fish:
@@ -141,6 +164,9 @@ class Game:
         font = pygame.font.Font(None, 36)
         lives_text = font.render(f'Lives: {self.player_fish.lives}', True, 'black')
         self.screen.blit(lives_text, (10, 10))
+        # 在Game的draw方法中显示分数
+        score_text = font.render(f'Score: {self.player_fish.score}', True, 'black')
+        self.screen.blit(score_text, (10, 50))
 
         # 显示Game Over
         if self.game_over:
@@ -152,22 +178,39 @@ class Game:
         pygame.display.flip()
 
 
-if __name__ == '__main__':
-    species = {
-        '1': {
-            'name': 'gold fish',
-            'size': 20,
-            'weight': 20,
-            'speed': 5,
-        },
-        '2': {  # 电脑鱼（随机属性模板）
-            'name': 'com',
-            'size_range': [10, 50],  # 大小范围
-            'weight_factor': 1,  # 重量 = size * factor
-            'speed_range': [1, 3]  # 速度范围
-        }
-    }
-    rect_player = [pixel_x / 2, pixel_y / 2]
-    rect_computer = []
-    for i in range(3):
-        rect_computer.append([random.randint(0, pixel_x), random.randint(0, pixel_y)])
+    def _draw_status_bar(self):
+        """绘制玩家状态栏"""
+        # 生命值
+        life_width = 200
+        pygame.draw.rect(self.screen, (255, 0, 0), (10, 10, life_width, 20))
+        pygame.draw.rect(self.screen, (0, 255, 0),
+                         (10, 10, life_width * (self.player_fish.lives / self.player_fish.max_lives), 20))
+
+        # 耐力条
+        stamina_height = 15
+        pygame.draw.rect(self.screen, (100, 100, 255),
+                         (pixel_x - 120, 10, 20, 100))
+        pygame.draw.rect(self.screen, (0, 200, 255),
+                         (pixel_x - 120, 10 + (100 - self.player_fish.stamina),
+                          20, self.player_fish.stamina))
+
+        # 阶段显示
+        stage_names = ["幼鱼期", "成长期", "成熟期", "海洋霸主"]
+        font = pygame.font.Font(None, 24)
+        text = font.render(f"阶段: {stage_names[self.player_fish.growth_stage]}", True, (0, 0, 0))
+        self.screen.blit(text, (pixel_x - 200, 10))
+
+
+    def _draw_debug_info(self):
+        """调试信息显示"""
+        debug_text = [
+            f"体型: {self.player_fish.size:.1f}",
+            f"实际速度: {self.player_fish.current_speed:.1f}",
+            f"攻击系数: {self.player_fish.attack_ratio:.1f}x",
+            f"生命恢复: {self.player_fish.regen_rate:.1f}/s"
+        ]
+        y_pos = 100
+        for text in debug_text:
+            surface = self.debug_font.render(text, True, (0, 0, 0))
+            self.screen.blit(surface, (10, y_pos))
+            y_pos += 25

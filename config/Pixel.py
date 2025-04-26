@@ -1,2 +1,2 @@
-pixel_x=800
-pixel_y=600
+pixel_x=1000
+pixel_y=800
