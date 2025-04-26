@@ -1,6 +1,6 @@
 import pygame
 import random
-from config.Pixel import pixel_x, pixel_y
+from config.config import pixel_x, pixel_y,fish_computer
 
 from character.FishPlayer import FishPlayer as fp
 from character.FishComputer import FishComputer as fc
@@ -29,10 +29,10 @@ class Game:
         self.game_over = False
         self.victory = False
         self.all_fish.add(self.player_fish)
-        self.min_computer_fish = 5  # 电脑鱼最小数量阈值
+        self.min_computer_fish = fish_computer  # 电脑鱼最小数量阈值
         self.win_play=False
         self.half_win_play = False
-
+        self.fail_play = False
     def run(self):
         while self.running:
             self.clock.tick(60)
@@ -158,7 +158,10 @@ class Game:
 
     def draw(self):
         # draw background and fish
-        self.screen.fill('white')
+        bg_image_path="drawable/background/background.jpg"
+        background=pygame.image.load(bg_image_path)
+        #self.screen.fill('white')
+        self.screen.blit(background,(0,0))
         self._draw_status_bar()
         # 调试信息
         # if self.DEBUG_MODE:
@@ -179,13 +182,13 @@ class Game:
         self.screen.blit(score_text, (10, 50))
 
         # 显示Game Over
-        if self.game_over:
+        if self.game_over and not self.fail_play:
             self.wy[2].play()
             game_over_font = pygame.font.Font(None, 72)
             game_over_text = game_over_font.render('GAME OVER', True, 'red')
             text_rect = game_over_text.get_rect(center=(pixel_x / 2, pixel_y / 2))
             self.screen.blit(game_over_text, text_rect)
-        # 显示Game Over
+        # 显示win
         if self.player_fish.win and not self.win_play:
             self.wy[3].play()
             win_font = pygame.font.Font(None, 72)

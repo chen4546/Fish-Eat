@@ -2,7 +2,7 @@ import pygame
 import gettext
 from game.Game import Game
 import random
-from config.Pixel import pixel_x,pixel_y
+from config.config import pixel_x,pixel_y
 from config.player import SPECIES
 from config.computer import STAGE_WEIGHTS,FISH_CLASSES
 def main():

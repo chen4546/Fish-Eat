@@ -1,38 +1,36 @@
 import pygame
 
 from character.Fish import Fish
-from config.Pixel import pixel_x, pixel_y
+from config.config import pixel_x, pixel_y
 
 
 class FishPlayer(Fish):
     def __init__(self, specie, rect):
         super().__init__(specie, rect)
         self.lives = specie['lives']  # 当前生命值
-        self.max_lives=specie['max_lives'] # 最大生命值
-        self.stamina=specie['stamina']  # 耐力值
-        self.attack_ratio=specie['attack_ratio']# 吞噬系数
-        self.regen_rate=specie['regen_rate']# 吞噬系数
-        self.growth_stage=specie['growth_stage'] # 成长阶段
-        self.current_speed=self.speed
+        self.max_lives = specie['max_lives']  # 最大生命值
+        self.stamina = specie['stamina']  # 耐力值
+        self.attack_ratio = specie['attack_ratio']  # 吞噬系数
+        self.regen_rate = specie['regen_rate']  # 吞噬系数
+        self.growth_stage = specie['growth_stage']  # 成长阶段
+        self.current_speed = self.speed
         self.is_invincible = False
         self.win = False
         self.invincible_duration = specie['invincible_duration']  # 无敌持续时间（毫秒）
         self.invincible_start_time = 0
         self.score = 0
-        self.win_score=specie['win_score']
-        self.original_image=pygame.image.load(f'drawable/png/{self.name}.png').convert_alpha()
-
+        self.win_score = specie['win_score']
+        self.original_image = pygame.image.load(f'drawable/png/{self.name}.png').convert_alpha()
 
     def take_damage(self):
         """玩家受到伤害时调用"""
         if not self.is_invincible:
             self.lives -= 1
-            self.score=max(self.score-100,0)
+            self.score = max(self.score - 100, 0)
             self.is_invincible = True
             self.invincible_start_time = pygame.time.get_ticks()
             return True
         return False
-
 
     '''
     def update_invincibility(self):
@@ -91,8 +89,8 @@ class FishPlayer(Fish):
     '''
 
     def update(self, keys):
-        if self.score>=self.win_score:
-            self.win=True
+        if self.score >= self.win_score:
+            self.win = True
             return
         # 运动控制
         move_vector = pygame.math.Vector2(0, 0)
@@ -126,6 +124,7 @@ class FishPlayer(Fish):
             current_time = pygame.time.get_ticks()
             if current_time - self.invincible_start_time > self.invincible_duration:
                 self.is_invincible = False
+
     def draw(self, screen):
         """根据无敌状态绘制闪烁效果"""
         current_image = self.image.copy()  # 确保使用当前的image，而不是base_image
@@ -138,10 +137,10 @@ class FishPlayer(Fish):
 
     def eat(self, other_fish):
         if self.size > other_fish.size * self.attack_ratio and other_fish.weight != 0:
-            other_fish.weight=0
+            other_fish.weight = 0
             # 计算基础成长量
             base_growth = other_fish.size * (0.2 - 0.01 * (self.size / 10))
-            self.score+=other_fish.size
+            self.score += other_fish.size
             new_size = min(self.size + base_growth, 200)
             # 更新属性
             size_diff = new_size - self.size
@@ -152,12 +151,13 @@ class FishPlayer(Fish):
             self.lives = min(self.max_lives, self.lives + 0.15 * self.max_lives)
 
             # 更新图像
+
             self._rescale_image()
 
             # 检查成长阶段
             self._check_growth_stage()
 
-            #从原始图像重新生成缩放后的图像
+            # 从原始图像重新生成缩放后的图像
 
             self.base_image = pygame.transform.smoothscale(self.original_image, (self.size, self.size))
             self.image = self.base_image.copy()
@@ -173,7 +173,7 @@ class FishPlayer(Fish):
         # 生命上限提升
         if self.size // 50 > (self.size - size_diff) // 50:
             self.max_lives += 1
-            self.lives=self.max_lives
+            self.lives = self.max_lives
             print(f"解锁新生命上限: {self.max_lives}")
 
     def _rescale_image(self):
@@ -183,6 +183,7 @@ class FishPlayer(Fish):
             self.original_image,
             (int(self.size), int(self.size)))
         self.rect = self.image.get_rect(center=old_center)
+        self.rotate()
 
     def _check_growth_stage(self):
         """成长阶段检测"""

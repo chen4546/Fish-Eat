@@ -3,7 +3,7 @@ import random
 import pygame
 
 from character.Fish import Fish
-from config.Pixel import pixel_x, pixel_y
+from config.config import pixel_x, pixel_y
 
 
 class FishComputer(Fish):

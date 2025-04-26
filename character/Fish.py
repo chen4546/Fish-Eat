@@ -1,7 +1,7 @@
 import pygame
 import math
 
-from config.Pixel import pixel_x,pixel_y
+from config.config import pixel_x,pixel_y
 
 class Fish(pygame.sprite.Sprite):
     """
